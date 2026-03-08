@@ -1,0 +1,6 @@
+! generic configuration file:  config.wam
+ RAMGBMAX=6.0
+ NCPU=8
+ USERID_PATH=/usr/local/wamitv7/etc   (directory for userid.wam)
+ LICENSE_PATH=/usr/local/wamitv7/license
+

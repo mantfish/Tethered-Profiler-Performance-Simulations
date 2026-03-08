@@ -1,0 +1,7 @@
+Box submerged Argo cyl. R=0.055, cyl draft=1.325, box L=0.21, box draft=.125. igdef=38
+1.35 9.81                    ULEN GRAV
+1  1                            ISX  ISY
+9  38                           NPATCH, IGDEF
+1                               Nlines
+0.105e0 0.125e0 0.055e0 1.325e0  -0.57e0 0.0175e0 0.05e0 Half box length, box draft, cyl. radius, cyl. draft, zcg, Top cylinder radius, top cylinder draft
+                     

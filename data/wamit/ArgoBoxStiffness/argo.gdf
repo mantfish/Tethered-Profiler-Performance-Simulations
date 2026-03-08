@@ -1,0 +1,6 @@
+Argo   Cylinder R=0.055, cylinder draft=1.325, box L=0.21, box draft=.125. igdef=36
+1.45 9.80665                    ULEN GRAV
+1  1                            ISX  ISY
+6  36                           NPATCH, IGDEF
+1                               Nlines
+0.105e0 0.125e0 0.055e0 1.325e0  -0.545e0 Half box length, box draft, cyl. radius, cyl. draft, zcg

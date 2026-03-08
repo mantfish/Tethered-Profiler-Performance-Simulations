@@ -1,0 +1,11 @@
+Argo   Cylinder R=0.055, cylinder draft=1.35, box L=0.21, box draft=.125. igdef=36
+ 20.
+ 1           1               IRAD, IDIFF
+ -150                            NPER (array PER follows)
+-.125 .125
+ 1                            NBETA (array BETA follows)
+ 0.
+ 1                            NBODY
+ argo.gdf
+ 0. 0. -.545 0.                  XBODY
+ 1  0  1  0  1  0             IMODE(1-6)

@@ -1,0 +1,77 @@
+
+WAMITLOG.TXT file from WAMIT run:  19-Dec-2025 17:00:06
+
+ Input file config.wam          
+! generic configuration file:  config.wam
+ RAMGBMAX=6.0
+ NCPU=4
+ USERID_PATH=/usr/local/wamitv7/etc   (directory for userid.wam)
+ LICENSE_PATH=/usr/local/wamitv7/license
+
+
+ Input file argo.cfg            
+! Argo   submerged R=0.055, cyl. draft=0.135, box L=0.21, box draft=.125. igdef=
+ IPOTEN=1
+ ipltdat=5
+ ilowgdf=4
+ ILOWHI=1
+ IRR=0
+ ISOLVE=1
+ KSPLIN=3
+ IQUADO=3
+ IQUADI=4
+ MONITR=0
+ NOOUT= 1 1 1 1 0 1 1 1 1
+ NUMHDR=1
+ IPERIN=2
+ PANEL_SIZE=0.05
+
+
+POTEN run started:  19-Dec-2025 17:00:06
+
+ Input file argo.pot            
+Argo   Cylinder R=0.055, cylinder draft=1.35, box L=0.21, box draft=.125. igdef=
+ 20.
+ 1           1               IRAD, IDIFF
+ -150                            NPER (array PER follows)
+-.125 .125
+ 1                            NBETA (array BETA follows)
+ 0.
+ 1                            NBODY
+ argo.gdf
+ 0. 0. -.545 0.                  XBODY
+ 1  0  1  0  1  0             IMODE(1-6)
+
+ Input file argo.gdf            
+Argo   Cylinder R=0.055, cylinder draft=1.325, box L=0.21, box draft=.125. igdef
+1.45 9.80665                    ULEN GRAV
+1  1                            ISX  ISY
+6  36                           NPATCH, IGDEF
+1                               Nlines
+0.105e0 0.125e0 0.055e0 1.325e0  -0.545e0 Half box length, box draft, cyl. radiu
+
+
+ Number of processors used :   4
+
+ Estimated RAM used :  8.4E-03 Gigabytes
+
+  POTEN module run completed
+
+POTEN run completed:  19-Dec-2025 17:00:52
+
+FORCE run started:  19-Dec-2025 17:00:52
+
+ Input file argo.frc            
+Argo   Cylinder R=0.055, cylinder draft=1.325, box L=0.21, box draft=.125. igdef
+   1   0   1   2   0   0   0   1   1
+ 0.0e0                                      VCG
+ 0.7655e0      .0000000      .0000000
+ .0000000      0.7655e0      .0000000
+ .0000000      .0000000      0.038890872e0         XPRDCT
+ 0                                           NBETAH
+ 0                                           NFIELD
+
+
+FORCE run completed:  19-Dec-2025 17:02:01
+
+  WAMIT run completed

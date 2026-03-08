@@ -1,0 +1,9 @@
+Argo submerged Cylinder R=0.055, cylinder draft=1.325, box L=0.21, box draft=.125. igdef=38
+   1   0   1   2   0   0   0   1   1
+ 0.0e0                                      VCG
+ 0.7655e0      .0000000      .0000000
+ .0000000      0.7655e0      .0000000
+ .0000000      .0000000      0.038890872e0         XPRDCT
+ 0                                           NBETAH
+ 0                                           NFIELD
+
