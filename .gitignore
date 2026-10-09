@@ -1,0 +1,30 @@
+# Virtual environments
+.env
+.venv
+.python-version
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Generated simulation files (MoorDyn inputs/outputs and raw results)
+data/dat_files/
+results/**/*.pkl
+results/**/*.log
+results/**/*.stdout
+
+# External data for the maps (download, see README)
+maps/data/
+maps/outputs/
+maps/cmems_tmp/
