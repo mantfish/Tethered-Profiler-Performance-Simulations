@@ -18,9 +18,10 @@ needed to reproduce the simulation results of the paper:
 | Lookup tables (Fig S2) | `scripts/run_lut_sweep.py` → `scripts/make_tables.py lut` | `data/waves/lut_sweep/` → `results/lookup_*.csv` |
 | Figs 3 and 4 (annual and hourly surfacing maps) | `maps/main.py` → `maps/plotter.py` | `results/lookup_*.csv` + Copernicus Marine and EMODnet data ([download](#external-data-not-included)) |
 | Fig 7 (predicted outcome of the deployment transmissions) | `scripts/run_validation_sweep.py` → `scripts/make_tables.py summary` | `data/waves/validation_sweep/` |
+| Figs 6 and 8 (deployment time series, tether sensor depths) | — (measured data) | `data/deployments/` |
+| Fig S1, Table S2 (ADCP current profiles) | — (measured data) | `data/adcp/` |
 
-The float deployment data (Sound and Lillebælt) are available from the corresponding author on reasonable request
-and are not part of this repository.
+The measured data from the two deployments and the ADCP are in [`data/deployments/` and `data/adcp/`](#measured-data).
 
 ---
 
@@ -72,7 +73,7 @@ Where the parameters of paper Table 2 live:
 │   ├── _sweep.py               #   settings shared by both sweeps
 │   └── make_tables.py          #   run outputs -> lookup table / per-depth summary CSVs
 ├── maps/                       # annual surfacing maps (Figs 3, 4)
-├── data/                       # model inputs (below)
+├── data/                       # model inputs and measured data (below)
 └── results/                    # lookup tables used in the paper (below)
 ```
 
@@ -93,6 +94,23 @@ Where the parameters of paper Table 2 live:
 All wave files are surface-elevation records synthesised from a one-sided JONSWAP spectrum normalised to Hs²/16
 with random phases (`sim/waves.py::WaveGenerator`). A run reads them with `WaveRecord`, looping the record if the
 run is longer.
+
+### Measured data
+
+Instrument exports as recorded, except where noted below. Positions and dates are in paper Table 1 and the
+Deployments section.
+
+| Path | Contents |
+|---|---|
+| `deployments/sound/argo.txt` | Sound deployment (55.74° N, 12.67° E, 14 m, 7–14 March 2025): profiling-float CTD export, `;`-separated. Columns `N, cycle, phase, day, hh:mm:ss, Pressure, Temperature, Salinity, C1Ph, C2Ph, Tempe_opt, decim flag`, as integer instrument counts (C1Ph / C2Ph are the oxygen optode phases); profiling cycles 2–24, `day` counted from deployment. |
+| `deployments/sound/{A,B,C}.CSV` | Sound deployment: the three micro-CTDs (Star-Oddi DST CTD) on the tether, 2 min interval. Distance from the anchor: C 4.0 m, B 11.4 m, A 18.8 m. `;`-separated: `Number; Date-Time (dd.mm.yyyy hh:mm:ss); Temp (°C); Depth (m); Salinity (psu); Conduct (mS/cm); Velocity (m/s, sound speed)`. |
+| `deployments/lillebaelt/argo.csv` | Lillebælt deployment (55.20° N, 9.75° E, 26 m): processed float profiles of deployment 4 (9 April – 2 June 2025) and deployment 5 (3 June – 19 July 2025). Columns `Deployment_no, Profile, Profile_no, Datetime_org, Datetime, Stage, PRES (dbar), TEMP (°C), PSAL, rho (kg/m³), DO_mgL, DO_umolKg, AOU, pO2`. `Datetime_org` is the time stamp sent by the float (`NaT` where it was filled in), `Stage` is the float's phase code. |
+| `deployments/lillebaelt/float_profiles.csv` | Lillebælt deployment: the same processed float profiles over the whole deployment, deployment 4 (9 April – 2 June 2025) and deployment 5 (3 June 2025 – retrieval on 17 February 2026). Same columns as `argo.csv`, plus `Depth` (m) and `DO_sat` (%). |
+| `deployments/lillebaelt/{A,B,C}.CSV` | Lillebælt deployment: tether micro-CTDs, 3 min interval, 9 April – 10 June 2025. Distance from the anchor: C 12.5 m, B 25.0 m, A 37.5 m. Same format as for the Sound; `A.CSV` is Latin-1 encoded, the others UTF-8. |
+| `adcp/lillebaelt_adcp.csv` | Nortek Eco ADCP export, Lillebælt test site (55.2010° N, 9.7521° E, instrument depth 23 m), 13 April – 23 June 2026, 5 min interval. Header lines start with `%` (30 lines; the Nortek account `Data ID` and `User ID` values have been removed); then local time (UTC+2), speed (m/s) and direction (°) in the upper (10.2 m), middle (14.5 m) and lower (18.8 m) layers, temperature, depth, tilt and a flag. |
+
+The Copernicus Marine conditions and wind for each transmission (Fig 7, Fig S3) are not included; the products are
+listed under [External data](#external-data-not-included) and wind came from the Open-Meteo Weather API.
 
 ### `results/`
 
