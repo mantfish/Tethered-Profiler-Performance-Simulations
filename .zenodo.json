@@ -4,8 +4,17 @@
   "upload_type": "software",
   "license": "MIT",
   "creators": [
-    {"name": "O'Brien-Møller, David", "affiliation": "Technical University of Denmark"},
-    {"name": "Bingham, Harry", "affiliation": "Technical University of Denmark"}
+    {
+      "name": "O'Brien-Møller, David",
+      "affiliation": "Technical University of Denmark"
+    }
   ],
-  "keywords": ["profiling float", "Argo", "tethered float", "mooring dynamics", "MoorDyn", "coastal observation"]
+  "keywords": [
+    "profiling float",
+    "Argo",
+    "tethered float",
+    "mooring dynamics",
+    "MoorDyn",
+    "coastal observation"
+  ]
 }

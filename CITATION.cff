@@ -11,9 +11,6 @@ authors:
   - family-names: "O'Brien-Møller"
     given-names: David
     affiliation: Technical University of Denmark
-  - family-names: Bingham
-    given-names: Harry
-    affiliation: Technical University of Denmark
 keywords:
   - profiling float
   - Argo

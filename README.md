@@ -247,7 +247,7 @@ those edges.
 
 Please cite the paper above and the archived release of this repository:
 
-> O'Brien-Møller, D., Bingham, H. (2026). *Tethered Profiler Simulations* (v1.0.0) [Software]. Zenodo.
+> O'Brien-Møller, D. (2026). *Tethered Profiler Simulations* (v1.0.0) [Software]. Zenodo.
 > https://doi.org/10.5281/zenodo.XXXXXXX
 
 Citation metadata is in `CITATION.cff`. The code is released under the MIT License (`LICENSE`).
