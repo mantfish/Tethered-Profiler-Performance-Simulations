@@ -1,0 +1,11 @@
+{
+  "title": "Tethered Profiler Simulations",
+  "description": "Code, model inputs and lookup tables for 'Feasibility of Tethered Profiling Floats for Coastal Observations' (O'Brien-Møller et al.). Coupled MoorDyn / WAMIT simulations of a tethered profiling float in current and waves, lookup tables of float submergence, and the pipeline for annual surfacing maps of the Baltic and North Sea from Copernicus Marine and EMODnet data.",
+  "upload_type": "software",
+  "license": "MIT",
+  "creators": [
+    {"name": "O'Brien-Møller, David", "affiliation": "Technical University of Denmark"},
+    {"name": "Bingham, Harry", "affiliation": "Technical University of Denmark"}
+  ],
+  "keywords": ["profiling float", "Argo", "tethered float", "mooring dynamics", "MoorDyn", "coastal observation"]
+}

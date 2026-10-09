@@ -1,171 +1,253 @@
 # Tethered Profiler Simulations
 
-A Python simulation framework for modelling the dynamics of a tethered Argo float subject to ocean currents and surface waves. The code runs parameter sweeps over tether depth, current speed, and wave conditions, and computes metrics such as the fraction of time the float spends submerged.
+<!-- Replace XXXXXXX with the Zenodo DOI after the first release is archived -->
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX)
 
-Two pre-computed lookup tables are available in `results/` (see [Lookup Tables](#lookup-tables) below).
+Code, model inputs and lookup tables for
+
+> O'Brien-Møller, D., Toftegård, B., Bingham, H., Galeazzi, R., Stedmon, C., Mariani, P.
+> *Feasibility of Tethered Profiling Floats for Coastal Observations.* (submitted)
+
+The repository simulates a profiling float (NKE ARVOR) tethered to a seabed anchor in steady current and
+irregular waves, and estimates how often the float can surface far enough to transmit data. It contains what is
+needed to reproduce the simulation results of the paper:
+
+| Paper item | Produced by | Inputs |
+|---|---|---|
+| Table 2 (model parameters) | `data/template.dat`, `data/wamit/`, `sim/` | — |
+| Lookup tables (Fig S2) | `scripts/run_lut_sweep.py` → `scripts/make_tables.py lut` | `data/waves/lut_sweep/` → `results/lookup_*.csv` |
+| Figs 3 and 4 (annual and hourly surfacing maps) | `maps/main.py` → `maps/plotter.py` | `results/lookup_*.csv` + Copernicus Marine and EMODnet data ([download](#external-data-not-included)) |
+| Fig 7 (predicted outcome of the deployment transmissions) | `scripts/run_validation_sweep.py` → `scripts/make_tables.py summary` | `data/waves/validation_sweep/` |
+
+The float deployment data (Sound and Lillebælt) are available from the corresponding author on reasonable request
+and are not part of this repository.
 
 ---
 
-## Overview
+## Model
 
-An Argo float is a free-drifting oceanographic profiler. This repository simulates a variant where the float is tethered to the seabed, constraining its horizontal displacement while allowing it to profile vertically. The simulation couples:
+The float is a 5-DOF rigid body (surge, sway, heave, roll, pitch; yaw neglected) whose mass, added mass and
+hydrostatic restoring come from WAMIT. The tether is a lumped-mass line in [MoorDyn](https://moordyn.readthedocs.io/).
+At each solver step MoorDyn returns the tether force on the float, and
 
-- **Float hydrodynamics** — mass, added mass, hydrostatic restoring, and viscous drag, derived from WAMIT panel-code outputs.
-- **Mooring line dynamics** — the tether is modelled in [MoorDyn](https://moordyn.readthedocs.io/), a lumped-mass mooring library.
-- **Environmental forcing** — a linearly-sheared current profile and optional irregular surface waves described by a JONSWAP spectrum.
+```
+(M + A) ẍ = F_restoring(+ wave) + F_drag + F_tether
+```
 
-The equations of motion (5 DOF: surge, sway, heave, roll, pitch) are integrated in time using SciPy's adaptive RK45 solver. Each simulation run is saved as a pickle file. A parameter sweep across multiple depths, current speeds, and wave files is managed by a job-queue runner with optional multiprocessing.
+is integrated with SciPy RK45 (`sim/simulate.py`). The current is linear in depth, zero at the seabed and
+`current_speed` at the surface, and is passed to MoorDyn through its external-kinematics interface, so it loads both
+the tether and the float. Waves enter as a JONSWAP surface-elevation time series η(t) that shifts the hydrostatic
+restoring force in heave (`sim/waves.py`).
+
+Where the parameters of paper Table 2 live:
+
+| Parameter | Value in this repo | Where |
+|---|---|---|
+| Mass, added mass (at the heave resonance), hydrostatic restoring | case K_L: heave stiffness ≈ 640 N/m; case K_S: ≈ 13 N/m | `data/wamit/ArgoBoxStiffness/` (K_L) and `data/wamit/ArgoSubmergedBox/` (K_S), read by `sim/ArgoMover.py` |
+| Float damping | diag [82.5, 82.5, 3.0, 4.4, 4.4]; quadratic in surge/sway, linear in heave/roll/pitch | `sim/ArgoMover.py::estimated_viscous_damping`, applied in `sim/simulate.py::_hydro_forces` |
+| Maximum restoring force (fully inflated bladder) | 3.8 N in heave | clip in `sim/simulate.py::_hydro_forces` |
+| Tether diameter, mass per metre | 4 mm, 0.013 kg/m | `data/template.dat`, line type `neutral4mm` |
+| Tether axial stiffness EA | 1.8 × 10⁵ N | `data/template.dat` |
+| Tether normal drag Cd / added mass Ca / axial drag CdAx | 1.2 / 1.0 / 0.01 | `data/template.dat` |
+| Tether length | 2 × water depth | `n: 2` in `config.yaml`, `n=2` in `scripts/_sweep.py` |
+| Water density | 1025 kg/m³ | same |
+| Transmission failure | foam top > 0.20 m below the surface for > 20 % of the window | `scripts/make_tables.py` (0.20 m), `maps/main.py` (`THRESHOLD = 0.20`) |
 
 ---
 
-## Repository Structure
+## Repository layout
 
 ```
 .
-├── main.py                   # Entry point — parses config and starts the sweep
-├── config.yaml               # Sweep and runtime configuration
-├── pyproject.toml            # Python project metadata and dependencies
-│
-├── sim/
-│   ├── ArgoMover.py          # Argo float equations of motion (WAMIT-based)
-│   ├── simulate.py           # Core time-integration loop (MoorDyn + scipy)
-│   ├── waves.py              # JONSWAP wave generation and wave-record reader
-│   └── helpers.py            # DAT file templating, linear current profile
-│
-├── experiments/
-│   ├── config.py             # Config dataclasses and YAML loader
-│   ├── job.py                # Job dataclass and single-job runner
-│   └── runner.py             # Sweep builder and parallel job dispatcher
-│
-├── data/                     # Example input data (included in repo)
-│   ├── template.dat          # MoorDyn DAT template with placeholder tokens
-│   ├── Hs_3.00m_Fp_0.11Hz_eta.dat   # Example wave time-series file
-│   └── wamit/
-│       ├── ArgoBoxStiffness/ # WAMIT outputs — tether stiffness configuration 1
-│       └── ArgoSubmergedBox/ # WAMIT outputs — tether stiffness configuration 2
-│
-└── results/
-    ├── lookup_table_stiffness1.csv   # Lookup table — tether configuration 1
-    └── lookup_table_stiffness2.csv   # Lookup table — tether configuration 2
+├── main.py, config.yaml        # generic sweep runner + quick-start example config
+├── sim/                        # physics
+│   ├── ArgoMover.py            #   float model from WAMIT output
+│   ├── simulate.py             #   MoorDyn coupling and time integration
+│   ├── waves.py                #   JONSWAP wave generation, wave-record reader
+│   └── helpers.py              #   .dat templating, linear current profile
+├── experiments/                # config loader, job builder, single-job runner
+├── scripts/                    # the exact sweeps of the paper
+│   ├── run_lut_sweep.py        #   lookup-table sweep (350 runs)
+│   ├── run_validation_sweep.py #   15 / 25 m deployment-conditions sweep (504 runs)
+│   ├── _sweep.py               #   settings shared by both sweeps
+│   └── make_tables.py          #   run outputs -> lookup table / per-depth summary CSVs
+├── maps/                       # annual surfacing maps (Figs 3, 4)
+├── data/                       # model inputs (below)
+└── results/                    # lookup tables used in the paper (below)
 ```
 
 ---
 
-## How It Works
+## Data files
 
-### 1. Configuration (`config.yaml`)
+### `data/`
 
-All sweep parameters are defined in `config.yaml`:
+| Path | Contents |
+|---|---|
+| `template.dat` | MoorDyn input template for the tether. `DEPTH`, `WTR_DEPTH`, `LENGTH` and `DENSITY` are filled in per run by `sim/helpers.py::edit_dat_file`. One 4 mm Dyneema line (`neutral4mm`: EA 1.8e5 N, Cd 1.2, Ca 1.0, CdAx 0.01, 15 segments) from a fixed anchor to a coupled body (the float). MoorDyn file output is off. |
+| `wamit/ArgoBoxStiffness/` | WAMIT run for the **large heave stiffness case K_L** (waterline through the foam block). `ArgoMover` reads `argo.out` (header, geometry), `argo.hst` (hydrostatic restoring), `argo.mmx` (mass matrix), `argo.1` (added mass and damping vs frequency) and `argo.json` (physical constants). The other files are the WAMIT inputs (`.gdf` geometry, `.pot`, `.frc`, `.cfg`, `config.wam`, `fnames.wam`), WAMIT logs, and the MATLAB / Mathematica scripts used to build the geometry. |
+| `wamit/ArgoSubmergedBox/` | The same for the **small heave stiffness case K_S** (waterline above the foam block, on the antenna and sensors). |
+| `waves/lut_sweep/Hs_<Hs>m_Fp_<Fp>Hz_eta.csv` | The four sea states of the lookup-table sweep, equidistant on the first principal component of the observed (Tp, Hs) distribution (paper Fig 2d): Hs / Tp = 0.49 m / 3.05 s, 0.97 m / 4.87 s, 1.46 m / 6.68 s, 1.94 m / 8.50 s. Columns `t_s, eta_m`, dt = 0.01 s. |
+| `waves/validation_sweep/Hs_<Hs>m_Fp_<Fp>Hz_eta.dat` | The 20 sea states of the validation sweep: Hs ∈ {0.25, 0.5, 0.75, 1.0} m × Fp ∈ {1.00, 0.67, 0.50, 0.40, 0.33} Hz (Tp 1.0, 1.49, 2.0, 2.5, 3.03 s). Plain-text η series with a short header (`0 0.01 1` = start time, dt, ...). |
 
-- **`paths`** — location of the MoorDyn DAT template, generated DAT files, wave files, and output directory.
-- **`system`** — tether multiplier `n`, seawater density, and one or more WAMIT data directories (one per tether stiffness configuration to sweep over).
-- **`sweep`** — lists of depths (m), current speeds (m/s), and wave conditions to combine into jobs.
-- **`timing`** — simulation duration, save interval, steady-state tolerance, and a speed-indexed timestep table.
-- **`runner`** — number of parallel workers and whether to skip already-completed outputs.
+All wave files are surface-elevation records synthesised from a one-sided JONSWAP spectrum normalised to Hs²/16
+with random phases (`sim/waves.py::WaveGenerator`). A run reads them with `WaveRecord`, looping the record if the
+run is longer.
 
-### 2. Float Hydrodynamics (`sim/ArgoMover.py`)
+### `results/`
 
-`ArgoMover` reads WAMIT output files (`.out`, `.hst`, `.mmx`, `.1`, `.json`) from a results folder and constructs:
+| Path | Contents |
+|---|---|
+| `lookup_ArgoBoxStiffness.csv` | Lookup table for case K_L (175 rows). |
+| `lookup_ArgoSubmergedBox.csv` | Lookup table for case K_S (175 rows). |
 
-- **Mass matrix** `M` — scaled from the normalised WAMIT `.mmx` file.
-- **Added mass** `M_res` — taken at the heave resonance frequency from the WAMIT `.1` file.
-- **Hydrostatic restoring matrix** `C` — read from the `.hst` file and dimensionalised.
-- **Viscous damping** — a fixed diagonal matrix with quadratic drag in surge/sway and linear drag in heave/roll/pitch.
+| Column | Meaning |
+|---|---|
+| `depth_m` | Water depth (m): 20, 30, 50, 75, 100. Tether length is twice this. |
+| `current_ms` | Surface current speed (m/s): 0.05, 0.10, 0.125, 0.15, 0.175, 0.20, 0.30. Linear profile to zero at the seabed. |
+| `Hs_m`, `Tp_s` | Significant wave height and peak period; `0, 0` means no waves. |
+| `frac_submerged` | Fraction of the last 60 s of the run in which the top of the foam block is more than 0.20 m below the instantaneous water surface (heave − η < −0.20 m). |
 
-Total inertia is `M_tot = M + M_res`. At each timestep the acceleration is solved from:
+Runs last 300 s (1000 s for 0.30 m/s at ≥ 50 m, which were still sinking at 300 s), start with the tether stretched,
+use a maximum solver step of 5 × 10⁻⁴ s and save every 0.2 s. The raw run outputs (one `.pkl` per run, ~300 MB in
+total) are not included; `scripts/run_lut_sweep.py` regenerates them.
 
-```
-M_tot * xdd = F_hydro + F_moor
-```
-
-where `F_hydro` combines hydrostatic restoring (with optional wave excitation in heave) and viscous drag in the body-fixed frame.
-
-### 3. Time Integration (`sim/simulate.py`)
-
-`run_simulation` drives the coupled MoorDyn + float model:
-
-1. A MoorDyn system is initialised from a generated `.dat` file (derived from a template by substituting depth, density, and tether length).
-2. At each solver evaluation, the current velocity profile (linear shear from zero at the seabed to `current_speed` at the surface) is passed to MoorDyn via its external wave kinematics API, and MoorDyn returns the tether tension forces.
-3. SciPy `solve_ivp` (RK45) integrates the 10-element state vector `[x, xd]` with an adaptive timestep bounded by the value from the config timestep table.
-4. A steady-state event terminates the simulation early if both the tension change and state change fall below `steady_state_tol` after 20 s of simulated time.
-5. Results (time history, state, tension, mooring node positions, optional wave elevation) are saved to a pickle file.
-
-### 4. Wave Conditions (`sim/waves.py`)
-
-- **`WaveGenerator`** — synthesises irregular sea-surface elevation η(t) from a JONSWAP spectrum given significant wave height `Hs` and peak frequency `Fp`, and writes the time series to CSV.
-- **`WaveRecord`** — reads a pre-generated wave CSV and provides a circular lookup `height(t)` used during integration.
-- **`find_wave_files`** — filters a directory of wave CSVs by `Hs` and `Fp` token lists (matched from filenames like `Hs_0.25m_Fp_0.33Hz_eta.csv`).
-
-### 5. Sweep Runner (`experiments/runner.py`, `experiments/job.py`)
-
-`build_jobs` constructs a flat list of `Job` objects from the Cartesian product of depths × current speeds × wave files. `run_all` dispatches these jobs, once for each WAMIT directory listed in the config, either sequentially (with a `tqdm` progress bar) or in parallel via `multiprocessing.Pool`.
-
-Each job:
-1. Generates a MoorDyn `.dat` file from the template.
-2. Calls `run_simulation`.
-3. Saves the result dict as a pickle file named after the run parameters.
-4. Writes a timestamped `.log` file alongside the pickle.
-5. Optionally cleans up the temporary `.dat` file.
+The maps interpolate the tables linearly in 4-D (depth, current, Hs, Tp), with nearest-neighbour fallback outside
+the convex hull and inputs clipped to the table range (`maps/lookup_interp.py`). Each hour and grid cell scores 1 if
+both cases have `frac_submerged` < 0.20, 0.5 if only one does (marginal), and 0 otherwise
+(`maps/data_processor.py::_classify_to_score`). The annual map shows the mean score in percent.
 
 ---
 
-## Lookup Tables
+## External data (not included)
 
-Two lookup tables are provided in `results/`, corresponding to two tether stiffness configurations:
+### Copernicus Marine Service
 
-| File | Configuration |
-|------|--------------|
-| `lookup_table_stiffness1.csv` | WAMIT model: `ArgoBoxStiffness` |
-| `lookup_table_stiffness2.csv` | WAMIT model: `ArgoSubmergedBox` |
+The maps use hourly surface currents (`uo`, `vo`, top model level) and wave parameters (`VHM0` = Hs,
+`VTPK` = Tp) for **2024-01-01 → 2025-01-08** over **6–15.5° E, 54–58.8° N**. `maps/main.py` downloads them
+itself, one day at a time, and deletes each day after processing.
 
-Each table has the following columns:
+| Used for | Product | Dataset ID in `maps/main.py` | Variables | DOI |
+|---|---|---|---|---|
+| Baltic currents (Figs 3, 4) | Baltic Sea Physics Analysis and Forecast (`BALTICSEA_ANALYSISFORECAST_PHY_003_006`) | `cmems_mod_bal_phy_anfc_PT1H-i` | uo, vo | [10.48670/moi-00010](https://doi.org/10.48670/moi-00010) |
+| Baltic waves (Figs 3, 4) | Baltic Sea Wave Hindcast (`BALTICSEA_MULTIYEAR_WAV_003_015`) | `cmems_mod_bal_wav_my_PT1H-i` | VHM0, VTPK | [10.48670/moi-00014](https://doi.org/10.48670/moi-00014) |
+| North Sea currents (NWS map, not shown in the paper) | Atlantic – European North West Shelf – Ocean Physics Reanalysis (`NWSHELF_MULTIYEAR_PHY_004_009`) | `cmems_mod_nws_phy-uv_my_7km-2D_PT1H-i` | uo, vo | [10.48670/moi-00059](https://doi.org/10.48670/moi-00059) |
+| North Sea waves (NWS map) | Atlantic – European North West Shelf – Wave Physics Reanalysis (`NWSHELF_REANALYSIS_WAV_004_015`) | `MetO-NWS-WAV-RAN` | VHM0, VTPK | [10.48670/moi-00060](https://doi.org/10.48670/moi-00060) |
 
-| Column | Description |
-|--------|-------------|
-| `depth_m` | Tether anchor depth (m) |
-| `current_ms` | Surface current speed (m/s) |
-| `Hs_m` | Significant wave height (m) |
-| `Tp_s` | Peak wave period (s) |
-| `frac_submerged` | Fraction of simulation time the float is submerged |
+The other products in paper Table S1 were used for the environmental statistics of Fig 2 and for the conditions
+during the deployments (Fig 7), not by code in this repository: Baltic Sea Physics Reanalysis
+([moi-00013](https://doi.org/10.48670/moi-00013)), Baltic Sea Wave Analysis and Forecast
+([moi-00011](https://doi.org/10.48670/moi-00011)), Baltic Sea In Situ Near Real Time Observations
+([moi-00032](https://doi.org/10.48670/moi-00032)) and Atlantic – European North West Shelf – Ocean Physics Analysis
+and Forecast ([moi-00054](https://doi.org/10.48670/moi-00054)).
 
-These tables can be used directly to look up expected submersion fractions for a given set of environmental conditions and tether configuration, without running new simulations.
+To download:
+
+1. Create a free account at <https://data.marine.copernicus.eu/register>.
+2. Install the map dependencies and log in once (this stores credentials in `~/.copernicusmarine/`):
+   ```bash
+   uv sync --extra maps
+   uv run copernicusmarine login
+   ```
+3. Run `maps/main.py` (step 4 of [Reproducing the results](#reproducing-the-results)), which calls
+   `copernicusmarine.subset` for each dataset and day. To download a dataset by hand instead, e.g. one day of
+   Baltic currents:
+   ```bash
+   uv run copernicusmarine subset --dataset-id cmems_mod_bal_phy_anfc_PT1H-i \
+     --variable uo --variable vo \
+     --minimum-longitude 6 --maximum-longitude 15.5 --minimum-latitude 54 --maximum-latitude 58.8 \
+     --start-datetime 2024-01-01T00:00:00 --end-datetime 2024-01-02T00:00:00 \
+     --output-directory maps/cmems_tmp
+   ```
+
+This study has been conducted using E.U. Copernicus Marine Service Information.
+
+### EMODnet bathymetry
+
+Water depth per grid cell comes from the EMODnet Digital Terrain Model tiles **D5** (North Sea, Skagerrak) and
+**D6** (western Baltic) in NetCDF format. Download them from the EMODnet portal
+(<https://emodnet.ec.europa.eu/geoviewer/>, Bathymetry → download DTM tiles) and save them as
+
+```
+maps/data/bathymetry/D5_2022.nc    # tile D5 (2022 release was used)
+maps/data/bathymetry/D6_2024.nc    # tile D6, DTM 2024, doi:10.12770/cf51df64-56f9-4a99-b1aa-36b8d7b743a1
+```
+
+or change `BATHY_NWS` / `BATHY_BAL` in `maps/main.py`. The Baltic grid uses D6 and fills gaps from D5.
 
 ---
 
 ## Installation
 
-Dependencies are managed with [uv](https://github.com/astral-sh/uv) (recommended) or pip.
+Python ≥ 3.12. With [uv](https://github.com/astral-sh/uv):
 
 ```bash
-# With uv
-uv sync
-
-# Or with pip
-pip install -e .
+uv sync                 # simulations
+uv sync --extra maps    # + map pipeline (Copernicus client, xarray, cartopy, ...)
 ```
 
-Required packages: `numpy`, `scipy`, `matplotlib`, `moordyn`, `pyyaml`, `tqdm`, `pandas`.
+or `pip install -e .` / `pip install -e ".[maps]"`. MoorDyn is installed from PyPI (`moordyn`).
 
-Python ≥ 3.12 is required.
+Quick check, two 30 s runs (one per stiffness case) written to `results/example/`:
+
+```bash
+uv run python main.py --config config.yaml
+```
 
 ---
 
-## Running a Sweep
+## Reproducing the results
 
-Example data is included in `data/` so the sweep can be run immediately after installation. Update `config.yaml` to point `paths.wave_dir` at your wave files if you want to use a different set, then run:
+Run from the repository root.
+
+**1. Lookup-table sweep** (350 runs, ≈ 28 h on 12 workers):
 
 ```bash
-python main.py --config config.yaml
+uv run python scripts/run_lut_sweep.py --workers 12      # --dry-run lists the jobs
 ```
 
-The default `config.yaml` already points `system.wamit_dir` at both WAMIT folders in `data/wamit/`. Increase `runner.workers` to use multiprocessing.
+This writes `results/lut_sweep/<WAMIT case>/*.pkl` plus a `.log` per run. Re-running skips finished runs.
+
+**2. Lookup tables:**
+
+```bash
+for W in ArgoBoxStiffness ArgoSubmergedBox; do
+  uv run python scripts/make_tables.py lut results/lut_sweep/$W
+  cp results/lut_sweep/$W/lookup_table.csv results/lookup_$W.csv
+done
+```
+
+**3. Validation sweep** for the deployment conditions (504 runs, ≈ 36 h on 12 workers):
+
+```bash
+uv run python scripts/run_validation_sweep.py --workers 12
+for W in ArgoBoxStiffness ArgoSubmergedBox; do
+  uv run python scripts/make_tables.py summary results/validation_sweep/$W   # -> 15m_summary.csv, 25m_summary.csv
+done
+```
+
+**4. Annual surfacing maps** (needs the [external data](#external-data-not-included); downloading a year of hourly
+data takes several hours):
+
+```bash
+cd maps
+uv run python main.py      # -> outputs/baltic_percent.parquet, outputs/nws_percent.parquet
+uv run python plotter.py   # -> outputs/Baltic_FULL_YEAR_percent.png (Fig 3), outputs/NWS_FULL_YEAR_percent.png
+```
+
+The lookup tables cover depths 20–100 m and Tp 3.05–8.5 s; shallower water and shorter-period seas are clipped to
+those edges.
+
+`main.py` with `config.yaml` runs any other grid of depths, current speeds and wave files with the same model
+(see the comments in `config.yaml`).
 
 ---
 
-## Example Data
+## Citation
 
-The `data/` directory contains the minimum inputs needed to run a simulation:
+Please cite the paper above and the archived release of this repository:
 
-- **`data/template.dat`** — MoorDyn DAT template. The runner substitutes the tokens `DEPTH`, `DENSITY`, `LENGTH`, and `WTR_DEPTH` for each job before passing the file to MoorDyn.
-- **`data/Hs_3.00m_Fp_0.11Hz_eta.dat`** — an example irregular wave time-series (Hs = 3 m, peak frequency = 0.11 Hz) generated from a JONSWAP spectrum. Additional wave files can be generated with `WaveGenerator` in `sim/waves.py` and placed in the same directory.
-- **`data/wamit/ArgoBoxStiffness/`** and **`data/wamit/ArgoSubmergedBox/`** — WAMIT panel-code output folders for the two tether stiffness configurations. Each folder contains the files read by `ArgoMover`: `argo.out`, `argo.hst`, `argo.mmx`, `argo.1`, and `argo.json`, as well as the WAMIT input files (`.gdf`, `.pot`, `.frc`, etc.) used to produce them.
+> O'Brien-Møller, D., Bingham, H. (2026). *Tethered Profiler Simulations* (v1.0.0) [Software]. Zenodo.
+> https://doi.org/10.5281/zenodo.XXXXXXX
+
+Citation metadata is in `CITATION.cff`. The code is released under the MIT License (`LICENSE`).

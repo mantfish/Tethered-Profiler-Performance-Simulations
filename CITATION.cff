@@ -1,0 +1,39 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the paper and this archived release."
+title: "Tethered Profiler Simulations"
+abstract: "Coupled MoorDyn / WAMIT simulations of a tethered profiling float in current and waves, lookup tables of float submergence, and annual surfacing maps for the Baltic and North Sea."
+type: software
+version: 1.0.0
+license: MIT
+repository-code: "https://github.com/mantfish/Tethered-Profiler-Performance-Simulations"
+# doi: 10.5281/zenodo.XXXXXXX   # add after the first Zenodo release
+authors:
+  - family-names: "O'Brien-Møller"
+    given-names: David
+    affiliation: Technical University of Denmark
+  - family-names: Bingham
+    given-names: Harry
+    affiliation: Technical University of Denmark
+keywords:
+  - profiling float
+  - Argo
+  - tethered float
+  - mooring dynamics
+  - MoorDyn
+  - coastal observation
+preferred-citation:
+  type: article
+  title: "Feasibility of Tethered Profiling Floats for Coastal Observations"
+  authors:
+    - family-names: "O'Brien-Møller"
+      given-names: David
+    - family-names: Toftegård
+      given-names: Bodil
+    - family-names: Bingham
+      given-names: Harry
+    - family-names: Galeazzi
+      given-names: Roberto
+    - family-names: Stedmon
+      given-names: Colin
+    - family-names: Mariani
+      given-names: Patrizio
