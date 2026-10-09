@@ -179,7 +179,7 @@ or change `BATHY_NWS` / `BATHY_BAL` in `maps/main.py`. The Baltic grid uses D6 a
 
 ## Installation
 
-Python ≥ 3.12. With [uv](https://github.com/astral-sh/uv):
+Python 3.12 or 3.13 (MoorDyn has no wheels for 3.14 yet). With [uv](https://github.com/astral-sh/uv):
 
 ```bash
 uv sync                 # simulations
