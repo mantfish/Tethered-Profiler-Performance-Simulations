@@ -3,10 +3,10 @@ message: "If you use this software, please cite the paper and this archived rele
 title: "Tethered Profiler Simulations"
 abstract: "Coupled MoorDyn / WAMIT simulations of a tethered profiling float in current and waves, lookup tables of float submergence, and annual surfacing maps for the Baltic and North Sea."
 type: software
-version: 1.0.0
+version: 1.1.0
 license: MIT
 repository-code: "https://github.com/mantfish/Tethered-Profiler-Performance-Simulations"
-# doi: 10.5281/zenodo.XXXXXXX   # add after the first Zenodo release
+doi: 10.5281/zenodo.23271551   # concept DOI, resolves to the latest release
 authors:
   - family-names: "O'Brien-Møller"
     given-names: David

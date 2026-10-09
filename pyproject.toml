@@ -1,6 +1,6 @@
 [project]
 name = "tethered-profiler-simulations"
-version = "1.0.0"
+version = "1.1.0"
 description = "Coupled MoorDyn / WAMIT simulations of a tethered profiling float, lookup tables and surfacing maps for 'Feasibility of Tethered Profiling Floats for Coastal Observations'"
 readme = "README.md"
 license = "MIT"
