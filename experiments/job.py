@@ -24,7 +24,11 @@ class Job:
 
 
 def dt_for_speed(cs: float, table: dict[float, float], default: float = 1e-4) -> float:
-    return table.get(round(cs, 2), default)
+    # Match on value, not round(cs, 2): 0.125 -> 0.12 and 0.175 -> 0.17 missed the table
+    for speed, dt in table.items():
+        if abs(speed - cs) < 1e-9:
+            return dt
+    return default
 
 
 def sim_time_for_speed_depth(cs: float, depth: float, base: float, multiplier: float) -> float:

@@ -448,6 +448,10 @@ def run_simulation(
                     t, y, md_sys, argo, current_speed, depth, current_profile, wave, quiet_moordyn
                 )
 
+            # Sample only at the save times. dense_output=True kept an interpolant for every
+            # step (~2e6 steps for 1000 s at max_step 5e-4, >2 GB per run); t_eval evaluates the
+            # same per-step interpolants on the fly, so the saved states are unchanged.
+            t_save = np.linspace(0, simulation_time, int(round(simulation_time / save_interval)) + 1)
             sol = solve_ivp(
                 fun=rhs_with_verbose,
                 t_span=(0, simulation_time),
@@ -455,17 +459,15 @@ def run_simulation(
                 method='RK45',  # 4th order Runge-Kutta method
                 max_step=dt,  # Conservative max step size
                 events=steady_state_event_wrapper,
-                dense_output=True,  # Enable dense output for callback
+                t_eval=t_save,
                 vectorized=False,
                 first_step=dt * safety_factor,  # Start with a small first step based on safety factor
             )
 
             # Process the solution with our callback to collect data at desired intervals
-            t_dense = np.linspace(0, sol.t[-1], int(sol.t[-1] / save_interval) + 1)
-            sol_dense = sol.sol(t_dense)
-            for i, t in enumerate(t_dense):
+            for i, t in enumerate(sol.t):
                 if t > 0:  # Skip t=0 as we already have it
-                    save_data_callback(t, sol_dense[:, i])
+                    save_data_callback(t, sol.y[:, i])
 
             # Process the solution
             if sol.status == 1:  # Terminated due to event (steady state)
