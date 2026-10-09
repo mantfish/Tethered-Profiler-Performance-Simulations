@@ -1,49 +1,50 @@
+# Quick-start example for main.py: one short run per WAMIT case, a few minutes in total.
+# The paper sweeps are run with scripts/run_lut_sweep.py and scripts/run_validation_sweep.py,
+# which use the same settings plus a per-case simulation time (see README).
 paths:
-  dat_template: "./data/dat_files/template.dat"
+  dat_template: "./data/template.dat"
   dat_outdir: "./data/dat_files/_generated"
-  output_dir: "./results/config_1/"
-  wave_dir: "./data/synthetic_waves/"
+  output_dir: "./results/example/"
+  wave_dir: "./data/waves/lut_sweep/"
 
 system:
-  n: 2
+  n: 2                     # tether length = n * depth
   density: 1025
   clean_temp_files: true
   wamit_dir:
-    - "data/wamit/ArgoBoxStiffness"
-    - "data/wamit/ArgoSubmergedBox"
+    - "data/wamit/ArgoBoxStiffness"   # K_L, large heave stiffness
+    - "data/wamit/ArgoSubmergedBox"   # K_S, small heave stiffness
 
 sweep:
-  depths: [15, 25]
-  current_speeds: [0.05, 0.10, 0.15, 0.20, 0.25,0.3]
+  depths: [20]
+  current_speeds: [0.10]
   waves:
     mode: "files"          # "files" or "none"
-    fp_tokens: [1.0, 0.33, 0.40, 0.5, 0.67]
-    hs_tokens: [0.25, 0.5, 0.75, 1.0] # whatever you use to filter
+    fp_tokens: [0.3276]    # Hs 0.49 m, Tp 3.05 s
+    hs_tokens: [0.4869]
     use_all: false         # if true, ignore tokens and use all wave files in wave_dir
     limit: null            # or integer to cap number of wave files
 
 timing:
-  save_interval: 0.1
+  save_interval: 0.2
   steady_state_tol: 1.0e-5
-  dt_table:
-    "0.05": 5e-6
-    "0.08": 1e-5
-    "0.10": 2e-5
-    "0.12": 2e-5
-    "0.15": 1e-4
-    "0.20": 1e-4
-    "0.30": 1e-4
-    "0.35": 1e-4
-    "0.40": 1e-3
-    "0.60": 1e-3
-    "0.80": 1e-3
+  start_pos: "end"         # start at the stretched tether position
+  dt_table:                # max solver step per current speed; 5e-4 for every speed in the paper
+    "0.05": 5e-4
+    "0.10": 5e-4
+    "0.125": 5e-4
+    "0.15": 5e-4
+    "0.175": 5e-4
+    "0.20": 5e-4
+    "0.25": 5e-4
+    "0.30": 5e-4
   sim_time:
-    mode: "fixed"    # "fixed" or "speed_depth"
-    fixed: 1
-    base: 5              # used for speed_depth
+    mode: "fixed"          # "fixed" or "speed_depth"
+    fixed: 30              # seconds; the paper runs use 300 s (1000 s for 0.30 m/s at >= 50 m)
+    base: 5                # used for speed_depth
     multiplier: 0.8660254  # sqrt(3)/2
 
 runner:
-  workers: 1
+  workers: 2
   skip_existing: true
   quiet_moordyn: true
