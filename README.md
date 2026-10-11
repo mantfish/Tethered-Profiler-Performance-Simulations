@@ -265,7 +265,7 @@ those edges.
 Please cite the paper above and the archived release of this repository:
 
 > O'Brien-Møller, D. (2026). *Tethered Profiler Simulations* [Software]. Zenodo.
-> https://doi.org/10.5281/zenodo.23271551
+> https://doi.org/10.5281/zenodo.23305523
 
 This DOI always resolves to the latest release; each release also has its own DOI, listed on the Zenodo
 record, for citing an exact version.
